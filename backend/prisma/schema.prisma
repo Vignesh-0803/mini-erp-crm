@@ -1,30 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-enum Role {
-  ADMIN
-  SALES
-  WAREHOUSE
-  ACCOUNTS
+datasource db {
+  provider = "postgresql"
 }
 
 enum CustomerType {
@@ -39,24 +18,17 @@ enum CustomerStatus {
   INACTIVE
 }
 
-enum MovementType {
+enum ProductCategory {
+  HARDWARE
+  ELECTRONICS
+  RAW_MATERIALS
+  FINISHED_GOODS
+  GENERAL
+}
+
+enum StockType {
   IN
   OUT
-}
-
-enum ChallanStatus {
-  DRAFT
-  CONFIRMED
-  CANCELLED
-}
-
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role
-  createdAt DateTime @default(now())
 }
 
 model Customer {
@@ -66,54 +38,57 @@ model Customer {
   email        String
   businessName String
   gstNumber    String?
-  type         CustomerType
+  type         CustomerType   @default(WHOLESALE)
   address      String
   status       CustomerStatus @default(LEAD)
   followUpDate DateTime?
   notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  challans     Challan[]
 }
 
 model Product {
-  id             String          @id @default(uuid())
-  name           String
-  sku            String          @unique
-  category       String
-  unitPrice      Float
-  currentStock   Int
-  minStockAlert  Int
-  location       String
-  stockMovements StockMovement[]
+  id            String            @id @default(uuid())
+  name          String
+  sku           String            @unique
+  category      ProductCategory   @default(GENERAL)
+  unitPrice     Float
+  currentStock  Int               @default(0)
+  minStockAlert Int               @default(5)
+  location      String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  movements     StockMovement[]
+  challanItems  ChallanItem[]
 }
 
 model StockMovement {
-  id           String       @id @default(uuid())
-  productId    String
-  product      Product      @relation(fields: [productId], references: [id])
-  quantity     Int
-  movementType MovementType
-  reason       String
-  createdBy    String
-  timestamp    DateTime     @default(now())
+  id        String    @id @default(uuid())
+  productId String
+  product   Product   @relation(fields: [productId], references: [id])
+  type      StockType
+  quantity  Int
+  reason    String?
+  createdAt DateTime  @default(now())
 }
 
 model Challan {
   id            String        @id @default(uuid())
   challanNumber String        @unique
   customerId    String
-  customerName  String
-  totalQuantity Int
-  status        ChallanStatus @default(DRAFT)
-  createdBy     String
-  createdAt     DateTime      @default(now())
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  status        String        @default("DRAFT")
   items         ChallanItem[]
+  createdAt     DateTime      @default(now())
 }
 
 model ChallanItem {
-  id          String  @id @default(uuid())
-  challanId   String
-  challan     Challan @relation(fields: [challanId], references: [id])
-  productId   String
-  productName String
-  unitPrice   Float
-  quantity    Int
+  id        String  @id @default(uuid())
+  challanId String
+  challan   Challan @relation(fields: [challanId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
 }
